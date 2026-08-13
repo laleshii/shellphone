@@ -38,8 +38,25 @@ shellphone spawns your command in a pseudo-terminal, serves an xterm.js web UI o
 
 ## Install
 
+Needs a Rust toolchain. If you don't have one:
+
+```sh
+brew install rust                                                # macOS (Homebrew)
+# or, any platform, via rustup:
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # then: source "$HOME/.cargo/env"
 ```
-cargo install --path .
+
+Then install from crates.io:
+
+```sh
+cargo install shellphone
+```
+
+Or build from a clone of this repo:
+
+```sh
+cargo install --path .     # builds + installs onto PATH
+# or just: cargo build --release   → binary at target/release/shellphone
 ```
 
 ## Usage
