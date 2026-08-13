@@ -3,9 +3,24 @@
 Pipe any CLI command to a secure, mobile-friendly web terminal. Run a command, scan the QR code, interact from your phone.
 
 ```
-shellphone run htop
-shellphone run --tunnel cloudflared bash
-shellphone run --tunnel none --tls docker logs -f my-app
+# shellphone run [OPTIONS] <CMD>...
+$ shellphone run --tunnel cloudflared claude --resume my-session-id
+
+ ▄▄▄▄▄▄▄ ▄▄▄       ▄▄▄▄▄▄▄
+ █ ▄▄▄ █ ▀▄ ▀█▄▀▄▄ █ ▄▄▄ █
+ █ ███ █ ▀█▀  ▀█▀█ █ ███ █
+ █▄▄▄▄▄█ ▄ ▄▀▄ ▄ ▄ █▄▄▄▄▄█
+ ▄ ▄▄ ▄▄▄▀▀▄▄█ ▄   ▄  ▄ ▄▄
+ ▄▄ ███▄ ▄ ▀ ██ ▀▀▄ ▄▄█▀
+   ▄▀ ▀▄▄ ▀▄▄ ██▄▀▄▄▀▄▀█
+  █ ▄ ▀▄▀██▀▀▄▄█▀▄▄▀█▀▄ █▀
+ ▀ ▀▀█▀▄▀███▄▀▄ ▀█▄█▄▄▀▄ ▀
+ ▄▄▄▄▄▄▄ ██▀▄█▀▄▀█ ▄ █▄▀█▄
+ █ ▄▄▄ █ ▀█▄▄█▄ ▀█▄▄▄█▀ █▀
+ █ ███ █ █▄▀▄██  ▀██ ██▀█▀
+ █▄▄▄▄▄█ ▄ ▀ ▄ ▄▀ █▄ ▀▀█▄▄
+
+→ https://my-cloudflare-tunnel.trycloudflare.com/t/a1b2c3d4e5f6
 ```
 
 ## How it works
