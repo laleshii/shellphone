@@ -1,6 +1,6 @@
 [package]
 name = "shellphone"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "Pipe CLI commands to a secure mobile web terminal"
 license = "MIT"

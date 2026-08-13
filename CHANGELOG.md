@@ -1,17 +1,21 @@
 # Changelog
 
-## 0.1.0 — 2026-08-13
+## 0.2.0
+
+### Added
+
+- Mobile toolbar with Esc, Tab, arrow keys, and Enter buttons (touch devices only)
+- Virtual keyboard support — terminal resizes when the keyboard appears/disappears
+- Touch scroll improvement — 3x scroll multiplier over xterm.js default
+- Scrollback buffer increased to 5000 lines
+
+## 0.1.0
 
 Initial release.
 
-- Run any shell command in a PTY and expose it via a mobile-friendly xterm.js web UI
-- One-time token authentication with refresh token for reconnection
-- Constant-time token comparison via `subtle`
-- Tunnel auto-detection: cloudflared, ngrok, bore, tailscale
-- Custom tunnel command support (`--tunnel-cmd`)
-- Built-in TLS with self-signed certificates (`--tls`)
-- Vendored xterm.js — single binary, no CDN dependency
+- Single binary with embedded frontend (xterm.js + fit addon)
+- Tunnel auto-detection (cloudflared, ngrok, bore, tailscale, custom)
+- One-time token auth with refresh token for reconnection
+- Built-in TLS with self-signed certificates
 - Terminal resize negotiation between browser and PTY
-- Compact QR code rendering with Unicode half-blocks, cleared on client connect
-- Graceful shutdown when the child process exits
-- Port fallback if default 3845 is taken
+- Graceful shutdown on command exit

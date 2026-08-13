@@ -8,7 +8,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; background: #1e1e2e; overflow: hidden; }
-    #terminal { height: 100%; width: 100%; }
+    #terminal { width: 100%; position: absolute; top: 0; bottom: 0; }
     #status {
       position: fixed; top: 0; left: 0; right: 0;
       padding: 4px 12px;
@@ -19,11 +19,40 @@
     #status.connected { background: #1e6640; }
     #status.error { background: #8b2525; }
     #status.reconnecting { background: #7c5a00; }
+    #toolbar {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #313244; border-top: 1px solid #45475a;
+      padding: 6px 4px; z-index: 10;
+      gap: 3px;
+      justify-content: center;
+    }
+    #toolbar button {
+      background: #45475a; color: #cdd6f4; border: none; border-radius: 4px;
+      font-family: monospace; font-size: 14px;
+      height: 40px;
+      padding: 0;
+      flex: 1 1 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #toolbar button:active { background: #585b70; }
+    #toolbar .spacer { width: 6px; flex-shrink: 0; }
   </style>
 </head>
 <body>
   <div id="status">Connecting...</div>
   <div id="terminal"></div>
+  <div id="toolbar">
+    <button data-key="Escape">Esc</button>
+    <button data-key="Tab">Tab</button>
+    <div class="spacer"></div>
+    <button data-key="ArrowUp">&uarr;</button>
+    <button data-key="ArrowDown">&darr;</button>
+    <button data-key="ArrowLeft">&larr;</button>
+    <button data-key="ArrowRight">&rarr;</button>
+    <button data-key="Enter">Enter</button>
+  </div>
 
   <script src="/assets/vendor/xterm.min.js"></script>
   <script src="/assets/vendor/addon-fit.min.js"></script>
@@ -33,9 +62,13 @@
     const initialToken = params.get('token') || '';
     const statusEl = document.getElementById('status');
 
+    const isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
     const term = new window.Terminal({
       cursorBlink: true,
       fontSize: 14,
+      scrollback: 5000,
+      scrollSensitivity: 3,
       theme: {
         background: '#1e1e2e',
         foreground: '#cdd6f4',
@@ -48,6 +81,22 @@
     term.open(document.getElementById('terminal'));
     fitAddon.fit();
 
+    // Override xterm's touch scroll with a 3x multiplier for smoother mobile scrolling
+    if (isTouchDevice) {
+      const vp = term.element.querySelector('.xterm-viewport');
+      let lastY = 0;
+      vp.addEventListener('touchstart', (e) => { lastY = e.touches[0].pageY; }, { passive: true });
+      vp.addEventListener('touchmove', (e) => {
+        const dy = lastY - e.touches[0].pageY;
+        lastY = e.touches[0].pageY;
+        vp.scrollTop += dy * 2;
+      }, { passive: true });
+    }
+
+    let ws = null;
+    let reconnectTimer = null;
+    let sessionEnded = false;
+
     window.addEventListener('resize', () => {
       fitAddon.fit();
       sendResize();
@@ -59,9 +108,53 @@
     });
     resizeObserver.observe(document.getElementById('terminal'));
 
-    let ws = null;
-    let reconnectTimer = null;
-    let sessionEnded = false;
+    // Mobile: resize terminal when virtual keyboard appears/disappears
+    const terminalEl = document.getElementById('terminal');
+    const toolbarEl = document.getElementById('toolbar');
+
+    if (isTouchDevice) {
+      toolbarEl.style.display = 'flex';
+    }
+
+    function updateLayout() {
+      const vv = window.visualViewport;
+      const keyboardOffset = vv ? window.innerHeight - vv.height : 0;
+      const viewportHeight = vv ? vv.height : window.innerHeight;
+      const toolbarHeight = isTouchDevice ? toolbarEl.offsetHeight : 0;
+      if (isTouchDevice) {
+        toolbarEl.style.bottom = keyboardOffset + 'px';
+      }
+      terminalEl.style.height = (viewportHeight - toolbarHeight) + 'px';
+      fitAddon.fit();
+      sendResize();
+    }
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateLayout);
+      window.visualViewport.addEventListener('scroll', updateLayout);
+    }
+    updateLayout();
+
+    // Mobile toolbar
+    const KEY_MAP = {
+      Escape: '\x1b',
+      Tab: '\t',
+      ArrowUp: '\x1b[A',
+      ArrowDown: '\x1b[B',
+      ArrowLeft: '\x1b[D',
+      ArrowRight: '\x1b[C',
+      Enter: '\r',
+    };
+
+    toolbarEl.addEventListener('pointerdown', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn || !btn.dataset.key) return;
+      e.preventDefault();
+      const key = KEY_MAP[btn.dataset.key] || btn.dataset.key;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'input', data: key }));
+      }
+    });
 
     function sendResize() {
       if (ws && ws.readyState === WebSocket.OPEN) {

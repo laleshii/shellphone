@@ -7,7 +7,7 @@ topics:
 relations:
 - type: refines
   target: architecture
-summary: 'The xterm.js-based mobile-friendly terminal UI with vendored assets, reconnection, and resize support.'
+summary: The xterm.js-based mobile-friendly terminal UI with vendored assets, reconnection, and resize support.
 ---
 
 # Frontend terminal UI
@@ -29,6 +29,14 @@ xterm.js and the fit addon are vendored in `frontend/vendor/` and served via `/a
 - **Binary frames** (server → client): raw PTY output, written to the terminal via `term.write(new Uint8Array(data))`.
 - **JSON text frames** (server → client): `refresh_token` (stored in localStorage) and `exit` (shows exit message, sets `sessionEnded` flag).
 - **JSON text frames** (client → server): `input` (keystrokes from `term.onData`) and `resize` (from `fitAddon.fit()` on window/container resize).
+
+## Mobile support
+
+- **Touch detection**: `('ontouchstart' in window) || navigator.maxTouchPoints > 0` gates mobile-only features.
+- **Toolbar**: fixed bar at the bottom with Esc, Tab, arrow keys, and Enter. Buttons use `flex: 1 1 0` to fill the full width for easy tapping. Sends escape sequences via the WebSocket (e.g. `\x1b[A` for up arrow, `\r` for Enter).
+- **Virtual keyboard handling**: listens to `visualViewport` resize and scroll events. When the keyboard appears, the toolbar repositions above it and the terminal shrinks to fit the remaining space.
+- **Touch scrolling**: overrides xterm.js's 1:1 pixel touch scroll with a 3x multiplier on the `.xterm-viewport` element. xterm's `scrollSensitivity` option only affects mouse wheel, not touch.
+- **Scrollback**: 5000 lines (up from xterm default of 1000).
 
 ## Reconnection
 
