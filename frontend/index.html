@@ -81,15 +81,38 @@
     term.open(document.getElementById('terminal'));
     fitAddon.fit();
 
-    // Override xterm's touch scroll with a 3x multiplier for smoother mobile scrolling
+    // Mobile touch scroll: 3x multiplier in normal mode, mouse wheel events in alternate buffer
+    // Handler goes on .xterm-screen (the top rendering layer that receives touch events),
+    // but scrollTop adjustments target .xterm-viewport (the actual scroll container).
     if (isTouchDevice) {
       const vp = term.element.querySelector('.xterm-viewport');
+      const screen = term.element.querySelector('.xterm-screen');
       let lastY = 0;
-      vp.addEventListener('touchstart', (e) => { lastY = e.touches[0].pageY; }, { passive: true });
-      vp.addEventListener('touchmove', (e) => {
+      let scrollAccum = 0;
+
+      screen.addEventListener('touchstart', (e) => {
+        lastY = e.touches[0].pageY;
+        scrollAccum = 0;
+      }, { passive: true });
+
+      screen.addEventListener('touchmove', (e) => {
         const dy = lastY - e.touches[0].pageY;
         lastY = e.touches[0].pageY;
-        vp.scrollTop += dy * 2;
+
+        if (term.buffer.active.type === 'alternate') {
+          scrollAccum += dy;
+          const rowPx = Math.round(vp.clientHeight / term.rows) || 16;
+          while (Math.abs(scrollAccum) >= rowPx) {
+            const down = scrollAccum > 0;
+            scrollAccum -= (down ? rowPx : -rowPx);
+            const seq = down ? '\x1b[<65;1;1M' : '\x1b[<64;1;1M';
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'input', data: seq }));
+            }
+          }
+        } else {
+          vp.scrollTop += dy * 2;
+        }
       }, { passive: true });
     }
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed
+
+- Touch scrolling now works on real phones — handler moved to `.xterm-screen` (the visible layer) instead of `.xterm-viewport` (hidden underneath)
+- TUI app scrolling (Claude Code, vim, less) — swipe gestures send mouse wheel escape sequences in alternate buffer mode
+- Replaced Ctrl toggle with dedicated toolbar buttons (Esc, Tab, arrows, Enter)
+- Fixed row height calculation for scroll accumulator
+
 ## 0.2.0
 
 ### Added
