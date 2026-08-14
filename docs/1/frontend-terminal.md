@@ -12,36 +12,31 @@ summary: The xterm.js-based mobile-friendly terminal UI with vendored assets, re
 
 # Frontend terminal UI
 
-`frontend/index.html` is a single-file web app that renders a terminal using xterm.js. It's embedded into the Rust binary at compile time via `rust-embed`.
+`frontend-src/` contains the wterm-based terminal source, built with esbuild into `frontend/` which is embedded into the Rust binary via `rust-embed`.
 
-## Vendored dependencies
+## Build pipeline
 
-xterm.js and the fit addon are vendored in `frontend/vendor/` and served via `/assets/vendor/...`. No CDN dependency — the binary works fully offline.
+1. Source: `frontend-src/terminal.mjs` + `frontend-src/index.html`
+2. Build: `cd frontend-src && npm run build` (esbuild bundles ESM + inlined WASM → `frontend/terminal.js`)
+3. Embed: rust-embed compiles `frontend/` into the binary at `cargo build` time
 
-## Connection flow
+## wterm integration
 
-1. Checks `localStorage` for a refresh token. If present and no `?token=` in the URL, connects with the refresh token. Otherwise uses the initial token from the URL.
-2. Opens a WebSocket to `/ws?token=...` or `/ws?refresh=...`, using `wss:` if the page was loaded over HTTPS.
-3. On successful connection, sends a resize message with the current terminal dimensions.
-
-## Message handling
-
-- **Binary frames** (server → client): raw PTY output, written to the terminal via `term.write(new Uint8Array(data))`.
-- **JSON text frames** (server → client): `refresh_token` (stored in localStorage) and `exit` (shows exit message, sets `sessionEnded` flag).
-- **JSON text frames** (client → server): `input` (keystrokes from `term.onData`) and `resize` (from `fitAddon.fit()` on window/container resize).
+Uses `@wterm/dom` which provides:
+- `WTerm` class: terminal constructor, `init()`, `write()`, `resize()`, `destroy()`
+- `onData` callback: user input (keystrokes)
+- `onResize` callback: terminal resize events
+- `autoResize: true`: built-in ResizeObserver, no fit addon needed
+- `bridge.usingAltScreen()`: detect alternate screen buffer (TUI apps)
+- Built-in WASM (base64-inlined, ~12KB): no separate .wasm file to serve
 
 ## Mobile support
 
-- **Touch detection**: `('ontouchstart' in window) || navigator.maxTouchPoints > 0` gates mobile-only features.
-- **Toolbar**: fixed bar at the bottom with Esc, Tab, arrow keys, and Enter. Buttons use `flex: 1 1 0` to fill the full width for easy tapping. Sends escape sequences via the WebSocket (e.g. `\x1b[A` for up arrow, `\r` for Enter).
-- **Virtual keyboard handling**: listens to `visualViewport` resize and scroll events. When the keyboard appears, the toolbar repositions above it and the terminal shrinks to fit the remaining space.
-- **Touch scrolling**: overrides xterm.js's 1:1 pixel touch scroll with a 3x multiplier on the `.xterm-viewport` element. xterm's `scrollSensitivity` option only affects mouse wheel, not touch.
-- **Scrollback**: 5000 lines (up from xterm default of 1000).
+- **Toolbar**: fixed bar at bottom with Esc, Tab, arrows, Enter. Shown on touch devices only.
+- **Virtual keyboard**: listens to `visualViewport` resize/scroll events, repositions toolbar and resizes terminal.
+- **Touch scroll (normal buffer)**: wterm handles natively via DOM scrolling.
+- **Touch scroll (alternate buffer)**: touchmove handler dispatches synthetic `WheelEvent` on the terminal element. wterm's input handler converts wheel events to SGR mouse escape sequences for the TUI app. Uses `passive: false` with `preventDefault()` to prevent the browser from stealing the gesture. `bridge.usingAltScreen()` gates alt-buffer mode.
 
-## Reconnection
+## WebSocket protocol
 
-On WebSocket close, the client reconnects after 2 seconds using the refresh token — unless `sessionEnded` is true (process exited), in which case it shows "Session closed" and stops.
-
-## Status indicator
-
-A fixed-position bar at the top shows: "Connecting...", "Connected" (green, auto-hides), "Reconnecting..." (yellow), or "Session closed" (red, persistent).
+Same as before: binary frames for PTY output, JSON text for control messages (`input`, `resize`, `refresh_token`, `exit`). Custom WebSocket handling (not wterm's built-in `WebSocketTransport`) to support one-time token auth and refresh tokens.

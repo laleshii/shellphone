@@ -1,6 +1,6 @@
 [package]
 name = "shellphone"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 description = "Pipe CLI commands to a secure mobile web terminal"
 license = "MIT"
@@ -33,3 +33,4 @@ tokio = { version = "1", features = ["full"] }
 tokio-rustls = "0.26"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+which = "7"

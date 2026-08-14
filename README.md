@@ -25,15 +25,19 @@ $ shellphone run --tunnel cloudflared claude --resume my-session-id
 
 ## How it works
 
-shellphone spawns your command in a pseudo-terminal, serves an xterm.js web UI over WebSocket, and optionally tunnels it to the internet. Authentication uses a one-time token embedded in the QR code — consumed on first connection, replaced with a refresh token for reconnection.
+shellphone spawns your command in a pseudo-terminal, serves a wterm web UI over WebSocket, and optionally tunnels it to the internet. Authentication uses a one-time token embedded in the QR code — consumed on first connection, replaced with a refresh token for reconnection.
 
 ## Features
 
-- **Single binary** — frontend vendored and embedded at compile time
+- **Single binary** — frontend bundled and embedded at compile time
+- **wterm terminal** — DOM-based rendering with native text selection and smooth scrolling
+- **Mobile toolbar** — Esc, Tab, arrow keys, Enter (touch devices only)
+- **TUI scroll support** — swipe to scroll in Claude Code, vim, less, etc.
+- **Agent shortcuts** — `shellphone agent claude` to resume sessions directly
 - **Tunnel auto-detection** — cloudflared, ngrok, bore, tailscale, or custom commands
 - **One-time token auth** with refresh token for reconnection
 - **Built-in TLS** — self-signed certs with `--tls`, fingerprint printed for TOFU
-- **Terminal resize** — negotiated between browser and PTY
+- **Virtual keyboard support** — terminal resizes when the keyboard appears
 - **Graceful shutdown** — exits when the command finishes
 
 ## Install
@@ -61,10 +65,41 @@ cargo install --path .     # builds + installs onto PATH
 
 ## Usage
 
+### Run any command
+
 ```
 shellphone run [OPTIONS] <CMD>...
+```
 
-Options:
+Examples:
+
+```sh
+shellphone run bash
+shellphone run --tunnel cloudflared claude --resume my-session
+shellphone run --tls --bind 0.0.0.0:3845 htop
+```
+
+### Resume an agent session
+
+```
+shellphone agent [OPTIONS] [AGENT] [SESSION]
+```
+
+Supported agents: `claude`, `codex`, `opencode`
+
+Examples:
+
+```sh
+shellphone agent claude                    # Claude's interactive session picker
+shellphone agent claude my-session-id      # Resume a specific session
+shellphone agent codex                     # Codex interactive picker
+shellphone agent opencode                  # Continue last opencode session
+shellphone agent                           # Pick from installed agents
+```
+
+### Options
+
+```
     --tunnel <PROVIDER>    auto, cloudflared, ngrok, bore, tailscale, custom, none [default: auto]
     --tunnel-cmd <CMD>     Custom tunnel command ({port} placeholder)
     --tls                  Enable built-in TLS with self-signed certificate
@@ -79,3 +114,15 @@ Options:
 4. Refresh token for reconnection, dies with the process
 5. TLS via tunnel or built-in self-signed certs
 6. QR code cleared from terminal after client connects
+
+## Building the frontend
+
+The frontend uses [wterm](https://github.com/vercel-labs/wterm) and requires a build step:
+
+```sh
+cd frontend-src
+npm install
+npm run build    # outputs to ../frontend/
+```
+
+The built frontend is committed to the repo, so this is only needed when modifying the terminal UI.

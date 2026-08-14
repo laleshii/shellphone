@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@wterm/dom": "latest"
+  },
+  "devDependencies": {
+    "esbuild": "latest"
+  }
+}

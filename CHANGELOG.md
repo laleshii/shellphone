@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+### Added
+
+- `shellphone agent` subcommand — resume AI coding agent sessions (Claude, Codex, opencode)
+- Replaced xterm.js with [wterm](https://github.com/vercel-labs/wterm) — DOM-based rendering with native text selection, smooth scrolling, and smaller bundle (66KB vs 295KB)
+- TUI scroll support — swipe gestures dispatch native wheel events in alternate buffer mode, scrolling works in Claude Code, vim, less, etc.
+
+### Changed
+
+- Frontend now uses an esbuild build step (`frontend-src/` → `frontend/`)
+- Touch scroll in alternate buffer uses `passive: false` with `preventDefault()` so the browser doesn't steal the gesture mid-swipe
+
 ## 0.2.1
 
 ### Fixed
