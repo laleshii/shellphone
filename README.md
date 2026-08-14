@@ -97,6 +97,19 @@ shellphone agent opencode                  # Continue last opencode session
 shellphone agent                           # Pick from installed agents
 ```
 
+### Attach from another terminal
+
+```
+shellphone attach [OPTIONS] <URL>
+```
+
+Connect to a running shellphone session from any terminal — no browser needed. Uses the same one-time token for initial auth, then reconnects automatically via refresh token if the connection drops.
+
+```sh
+shellphone attach "http://127.0.0.1:3845?token=abc123"
+shellphone attach -k "https://10.0.10.8:3845?token=abc123"   # -k accepts self-signed certs
+```
+
 ### Options
 
 ```

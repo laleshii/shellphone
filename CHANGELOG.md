@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.1
+
+### Added
+
+- `shellphone attach <url>` — connect to a running session from another terminal, no browser needed
+- Auto-reconnect on connection drop using refresh token (same mechanism as the web client)
+- `-k` / `--insecure` flag to accept self-signed TLS certificates
+- opencode agent support (`shellphone agent opencode`)
+
 ## 0.3.0
 
 ### Added

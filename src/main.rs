@@ -1,3 +1,4 @@
+mod attach;
 mod auth;
 mod protocol;
 mod pty_bridge;
@@ -50,6 +51,16 @@ enum Commands {
         net: NetworkOpts,
     },
 
+    /// Attach to a running shellphone session from another terminal
+    Attach {
+        /// The shellphone URL (e.g. https://host:3845?token=...)
+        url: String,
+
+        /// Accept self-signed TLS certificates
+        #[arg(long, short = 'k')]
+        insecure: bool,
+    },
+
     /// Resume an AI coding agent session
     Agent {
         /// Agent name (claude, codex). Omit for interactive selection.
@@ -71,15 +82,14 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    let (command_str, net) = match cli.command {
-        Commands::Run { cmd, net } => (cmd.join(" "), net),
+    match cli.command {
+        Commands::Run { cmd, net } => run_command(&cmd.join(" "), net).await,
+        Commands::Attach { url, insecure } => attach::run(&url, insecure).await,
         Commands::Agent { agent, session, net } => {
             let cmd = resolve_agent_command(agent, session)?;
-            (cmd, net)
+            run_command(&cmd, net).await
         }
-    };
-
-    run_command(&command_str, net).await
+    }
 }
 
 struct AgentDef {
