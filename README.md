@@ -104,7 +104,7 @@ shellphone agent                           # Pick from installed agents
 shellphone herdr [OPTIONS] [PANE]
 ```
 
-Mirror a running [herdr](https://herdr.dev) session. The phone gets a pane picker grouped by workspace and tab, with idle / working / blocked badges for each agent, and one pane attached as a terminal sized to the phone. ‹ › cycle through panes, ☰ opens the list, ⌖ focuses the attached pane in your desktop herdr.
+Mirror a running [herdr](https://herdr.dev) session. The phone gets a pane picker with idle / working / blocked badges for each agent, grouped by priority (agents that need you first) or by workspace and tab, and one pane attached as a terminal sized to the phone. ‹ › cycle through panes, ☰ opens the list, ⌖ focuses the attached pane in your desktop herdr.
 
 ```sh
 shellphone herdr                             # default session, starts on herdr's focused pane

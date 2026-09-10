@@ -5,6 +5,7 @@
 ### Added
 
 - `shellphone herdr [PANE]` — drive a running [herdr](https://herdr.dev) session from your phone: browse workspaces, tabs and panes with live agent status, attach to one pane at a time, switch with ‹ › or the pane list, and focus a pane on the desktop
+- Pane list groups by priority (needs you, done, working, idle, shells) by default, or by workspace and tab; the choice is remembered
 - Panes are rendered at phone size through `herdr terminal session control --takeover`; herdr restores the desktop size when you detach
 - `--session <name>`, `--socket <path>` and `--herdr-bin <path>` to pick the herdr server; `$HERDR_SOCKET_PATH` is honoured when running from inside a herdr pane
 - Reconnecting phones get the current screen replayed instead of a blank terminal

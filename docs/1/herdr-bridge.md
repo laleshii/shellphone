@@ -64,7 +64,7 @@ Server to client: `refresh_token` (shared with PTY mode), `snapshot {workspaces,
 
 ## Frontend
 
-`frontend-src/herdr.mjs` and `herdr.html` build to `frontend/herdr.js` and `frontend/herdr.html`. The top bar shows workspace › tab and the pane title with a status dot; ‹ › cycle through panes in sidebar order; ☰ opens a full-screen list grouped by workspace and tab with a "Needs attention" section first (blocked, then done); ⌖ focuses the attached pane in the desktop herdr. On first snapshot the page attaches `?pane=` if given, else herdr's focused pane.
+`frontend-src/herdr.mjs` and `herdr.html` build to `frontend/herdr.js` and `frontend/herdr.html`. The top bar shows workspace › tab and the pane title with a status dot; ‹ › cycle through panes in sidebar order; ☰ opens a full-screen pane list with a Priority / Spaces toggle (remembered in `localStorage`): Priority, the default, groups panes by agent state in the order Needs you (blocked), Done, Working, Idle, Shells, each row carrying its workspace › tab crumb; Spaces shows the herdr tree grouped by workspace and tab. ⌖ focuses the attached pane in the desktop herdr. On first snapshot the page attaches `?pane=` if given, else herdr's focused pane.
 
 ## Touch scrolling
 

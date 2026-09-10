@@ -164,7 +164,16 @@ if (isTouchDevice) {
 }
 
 // Snapshot rendering
+const GROUP_KEY = 'shellphone_herdr_group';
 const STATUS_RANK = { blocked: 0, done: 1, working: 2, idle: 3, unknown: 4 };
+const STATUS_GROUPS = [
+  ['blocked', 'Needs you'],
+  ['done', 'Done'],
+  ['working', 'Working'],
+  ['idle', 'Idle'],
+  ['unknown', 'Shells'],
+];
+let groupBy = localStorage.getItem(GROUP_KEY) === 'spaces' ? 'spaces' : 'priority';
 
 function orderedPanes() {
   if (!snapshot) return [];
@@ -202,11 +211,9 @@ function renderCurrent() {
     return;
   }
   emptyEl.hidden = true;
-  const workspace = snapshot.workspaces.find((w) => w.workspace_id === pane.workspace_id);
-  const tab = snapshot.tabs.find((t) => t.tab_id === pane.tab_id);
   dot.className = `dot ${pane.agent_status}`;
   text.textContent = paneName(pane);
-  crumbs.textContent = [workspace?.label, tab?.label].filter(Boolean).join(' › ') || pane.pane_id;
+  crumbs.textContent = crumbsFor(pane) || pane.pane_id;
 
   const panes = orderedPanes();
   const idx = panes.findIndex((p) => p.pane_id === attachedPaneId);
@@ -219,19 +226,24 @@ function renderCurrent() {
 function renderTree() {
   treeEl.textContent = '';
   if (!snapshot) return;
-  const attention = orderedPanes().filter((p) => p.agent_status === 'blocked' || p.agent_status === 'done');
-  if (attention.length) {
-    const section = document.createElement('div');
-    section.className = 'ws';
+  if (groupBy === 'priority') renderByPriority();
+  else renderBySpaces();
+}
+
+function renderByPriority() {
+  const panes = orderedPanes();
+  for (const [status, label] of STATUS_GROUPS) {
+    const group = panes.filter((p) => p.agent_status === status);
+    if (!group.length) continue;
     const head = document.createElement('div');
-    head.className = 'ws-head';
-    head.innerHTML = '<span class="dot blocked"></span>Needs attention';
-    section.appendChild(head);
-    attention
-      .sort((a, b) => STATUS_RANK[a.agent_status] - STATUS_RANK[b.agent_status])
-      .forEach((pane) => section.appendChild(paneRow(pane)));
-    treeEl.appendChild(section);
+    head.className = `group-head ${status}`;
+    head.innerHTML = `<span class="dot ${status}"></span>${label} <span class="n">${group.length}</span>`;
+    treeEl.appendChild(head);
+    group.forEach((pane) => treeEl.appendChild(paneRow(pane, { crumbs: true })));
   }
+}
+
+function renderBySpaces() {
   for (const workspace of snapshot.workspaces) {
     const section = document.createElement('div');
     section.className = 'ws';
@@ -254,16 +266,25 @@ function renderTree() {
   }
 }
 
-function paneRow(pane) {
+function crumbsFor(pane) {
+  const workspace = snapshot.workspaces.find((w) => w.workspace_id === pane.workspace_id);
+  const tab = snapshot.tabs.find((t) => t.tab_id === pane.tab_id);
+  return [workspace?.label, tab?.label].filter(Boolean).join(' › ');
+}
+
+function paneRow(pane, { crumbs = false } = {}) {
   const row = document.createElement('button');
   row.className = 'pane' + (pane.pane_id === attachedPaneId ? ' attached' : '');
   row.dataset.pane = pane.pane_id;
   const agent = pane.display_agent || pane.agent;
+  const sub = crumbs
+    ? `<span class="crumb">${escapeHtml(crumbsFor(pane))}</span> · ${escapeHtml(shortCwd(pane.cwd))}`
+    : `${escapeHtml(pane.pane_id)} · ${escapeHtml(shortCwd(pane.cwd))}`;
   row.innerHTML = `
     <span class="dot ${pane.agent_status}"></span>
     <span class="meta">
       <div class="name">${escapeHtml(paneName(pane))}</div>
-      <div class="sub">${escapeHtml(pane.pane_id)} · ${escapeHtml(shortCwd(pane.cwd))}</div>
+      <div class="sub">${sub}</div>
     </span>
     ${agent ? `<span class="agent ${pane.agent_status}">${escapeHtml(agent)} · ${pane.agent_status}</span>` : ''}`;
   return row;
@@ -293,6 +314,19 @@ el('menu').addEventListener('click', openDrawer);
 el('empty-open').addEventListener('click', openDrawer);
 currentEl.addEventListener('click', openDrawer);
 el('close').addEventListener('click', closeDrawer);
+el('group').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-group]');
+  if (!btn) return;
+  groupBy = btn.dataset.group;
+  localStorage.setItem(GROUP_KEY, groupBy);
+  syncGroupToggle();
+  renderTree();
+});
+
+function syncGroupToggle() {
+  el('group').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.group === groupBy));
+}
+syncGroupToggle();
 el('prev').addEventListener('click', (e) => attach(e.currentTarget.dataset.target));
 el('next').addEventListener('click', (e) => attach(e.currentTarget.dataset.target));
 el('focus').addEventListener('click', () => {

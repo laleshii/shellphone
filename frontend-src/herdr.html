@@ -76,7 +76,20 @@
       padding: 0 4px 0 16px; border-bottom: 1px solid #313244; background: #181825;
       font-size: 15px; font-weight: 600;
     }
-    #drawer header button { background: none; border: none; color: #cdd6f4; font-size: 20px; width: 44px; height: 44px; }
+    #drawer header > button { background: none; border: none; color: #cdd6f4; font-size: 20px; width: 44px; height: 44px; }
+    #group { display: flex; background: #313244; border-radius: 8px; padding: 2px; margin-left: auto; margin-right: 8px; }
+    #group button { background: none; border: none; color: #a6adc8; font-size: 13px; padding: 5px 12px; border-radius: 6px; }
+    #group button.on { background: #45475a; color: #cdd6f4; font-weight: 600; }
+    .group-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 14px 16px 4px; font-size: 12px; font-weight: 600;
+      color: #a6adc8; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .group-head .n { color: #585b70; font-weight: 400; }
+    .group-head.blocked { color: #f38ba8; }
+    .group-head.done { color: #a6e3a1; }
+    .group-head.working { color: #89b4fa; }
+    .pane .crumb { color: #cba6f7; }
     #tree { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
     .ws { padding-top: 10px; }
     .ws-head {
@@ -143,7 +156,14 @@
   </div>
 
   <div id="drawer" hidden>
-    <header><span>Panes</span><button id="close">✕</button></header>
+    <header>
+      <span>Panes</span>
+      <div id="group" role="tablist">
+        <button data-group="priority" class="on">Priority</button>
+        <button data-group="spaces">Spaces</button>
+      </div>
+      <button id="close">✕</button>
+    </header>
     <div id="tree"></div>
     <div id="legend">
       <span><i class="dot idle"></i> idle / done</span>
