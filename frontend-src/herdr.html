@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>shellphone · herdr</title>
+  <link rel="stylesheet" href="/assets/terminal.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; background: #1e1e2e; color: #cdd6f4; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+    #status {
+      position: fixed; top: 0; left: 0; right: 0;
+      padding: 4px 12px;
+      font-family: monospace; font-size: 12px;
+      color: #cdd6f4; background: #313244;
+      z-index: 30;
+    }
+    #status.connected { background: #1e6640; }
+    #status.error { background: #8b2525; }
+    #status.reconnecting { background: #7c5a00; }
+
+    #topbar {
+      position: fixed; top: 0; left: 0; right: 0; height: 44px;
+      display: flex; align-items: stretch;
+      background: #181825; border-bottom: 1px solid #313244;
+      z-index: 20;
+    }
+    #topbar button {
+      background: none; border: none; color: #cdd6f4;
+      font-size: 20px; width: 44px; flex: 0 0 44px;
+    }
+    #topbar button:active { background: #313244; }
+    #topbar button:disabled { color: #585b70; }
+    #topbar #current {
+      flex: 1 1 auto; width: auto; min-width: 0;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 0 4px; text-align: left; background: none; border: none; color: inherit;
+    }
+    #current .crumbs { font-size: 11px; color: #a6adc8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #current .title { font-size: 14px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+    #current .title .text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #585b70; flex: 0 0 9px; }
+    .dot.idle, .dot.done { background: #a6e3a1; }
+    .dot.working { background: #89b4fa; animation: pulse 1.2s ease-in-out infinite; }
+    .dot.blocked { background: #f38ba8; animation: pulse 0.7s ease-in-out infinite; }
+    .dot.unknown { background: #585b70; }
+    .dot.done { box-shadow: 0 0 0 2px rgba(166, 227, 161, 0.35); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    #terminal { position: absolute; top: 44px; left: 0; right: 0; bottom: 0; }
+
+    #empty[hidden] { display: none; }
+    #empty {
+      position: absolute; top: 44px; left: 0; right: 0; bottom: 0;
+      display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+      color: #a6adc8; font-size: 15px; text-align: center; padding: 24px;
+    }
+    #empty button {
+      background: #45475a; color: #cdd6f4; border: none; border-radius: 6px;
+      padding: 10px 18px; font-size: 15px;
+    }
+
+    #drawer {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #1e1e2e; z-index: 25;
+      display: flex; flex-direction: column;
+    }
+    #drawer[hidden] { display: none; }
+    #drawer header {
+      height: 44px; flex: 0 0 44px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 4px 0 16px; border-bottom: 1px solid #313244; background: #181825;
+      font-size: 15px; font-weight: 600;
+    }
+    #drawer header button { background: none; border: none; color: #cdd6f4; font-size: 20px; width: 44px; height: 44px; }
+    #tree { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 24px; }
+    .ws { padding-top: 10px; }
+    .ws-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px 4px; font-size: 12px; font-weight: 600;
+      color: #cba6f7; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .ws-head .n { color: #585b70; font-weight: 400; }
+    .tab-head { padding: 8px 16px 2px 24px; font-size: 12px; color: #a6adc8; display: flex; align-items: center; gap: 8px; }
+    .pane {
+      display: flex; align-items: center; gap: 12px;
+      width: 100%; text-align: left;
+      padding: 10px 16px 10px 32px; background: none; border: none; color: #cdd6f4;
+      border-left: 3px solid transparent;
+    }
+    .pane:active { background: #313244; }
+    .pane.attached { border-left-color: #cba6f7; background: #26263a; }
+    .pane .meta { min-width: 0; flex: 1 1 auto; }
+    .pane .name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pane .sub { font-size: 11px; color: #7f849c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; }
+    .pane .agent { font-size: 11px; color: #a6adc8; background: #313244; border-radius: 4px; padding: 2px 6px; flex: 0 0 auto; }
+    .pane .agent.blocked { color: #f38ba8; }
+    .pane .agent.working { color: #89b4fa; }
+    #legend { padding: 16px; font-size: 11px; color: #7f849c; display: flex; gap: 14px; flex-wrap: wrap; border-top: 1px solid #313244; }
+    #legend span { display: inline-flex; align-items: center; gap: 5px; }
+
+    #toolbar {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #313244; border-top: 1px solid #45475a;
+      padding: 6px 4px; z-index: 10;
+      gap: 3px;
+      justify-content: center;
+    }
+    #toolbar button {
+      background: #45475a; color: #cdd6f4; border: none; border-radius: 4px;
+      font-family: monospace; font-size: 14px;
+      height: 40px;
+      padding: 0;
+      flex: 1 1 0;
+    }
+    #toolbar button:active { background: #585b70; }
+    #toolbar .spacer { width: 6px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+  <div id="status">Connecting...</div>
+
+  <div id="topbar">
+    <button id="menu" title="Panes">☰</button>
+    <button id="prev" title="Previous pane">‹</button>
+    <button id="current">
+      <div class="crumbs">herdr</div>
+      <div class="title"><span class="dot"></span><span class="text">No pane attached</span></div>
+    </button>
+    <button id="next" title="Next pane">›</button>
+    <button id="focus" title="Focus this pane on the desktop">⌖</button>
+  </div>
+
+  <div id="terminal"></div>
+  <div id="empty">
+    <div>Pick a pane to attach.</div>
+    <button id="empty-open">Open pane list</button>
+  </div>
+
+  <div id="drawer" hidden>
+    <header><span>Panes</span><button id="close">✕</button></header>
+    <div id="tree"></div>
+    <div id="legend">
+      <span><i class="dot idle"></i> idle / done</span>
+      <span><i class="dot working"></i> working</span>
+      <span><i class="dot blocked"></i> needs you</span>
+      <span><i class="dot unknown"></i> shell</span>
+    </div>
+  </div>
+
+  <div id="toolbar">
+    <button data-key="Escape">Esc</button>
+    <button data-key="Tab">Tab</button>
+    <div class="spacer"></div>
+    <button data-key="ArrowUp">&uarr;</button>
+    <button data-key="ArrowDown">&darr;</button>
+    <button data-key="ArrowLeft">&larr;</button>
+    <button data-key="ArrowRight">&rarr;</button>
+    <button data-key="Enter">Enter</button>
+  </div>
+
+  <script type="module" src="/assets/herdr.js"></script>
+</body>
+</html>

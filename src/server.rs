@@ -1,4 +1,5 @@
 use crate::auth::{AuthResult, SessionGuard};
+use crate::herdr;
 use crate::protocol::{ClientMessage, ServerMessage};
 use crate::pty_bridge::{CommandTx, EventRx, PtyCommand, PtyEvent};
 use crate::tls::SelfSignedCert;
@@ -8,6 +9,7 @@ use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
+use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use rust_embed::Embed;
 use std::collections::HashMap;
@@ -19,28 +21,55 @@ use tokio::sync::{broadcast, Notify};
 #[folder = "frontend/"]
 struct FrontendAssets;
 
+pub enum BackendConfig {
+    Pty { cmd_tx: CommandTx, event_rx: EventRx },
+    Herdr(Arc<herdr::Hub>),
+}
+
+#[derive(Clone)]
+enum Backend {
+    Pty {
+        cmd_tx: CommandTx,
+        event_tx: broadcast::Sender<PtyEvent>,
+    },
+    Herdr(Arc<herdr::Hub>),
+}
+
+impl Backend {
+    fn index_file(&self) -> &'static str {
+        match self {
+            Backend::Pty { .. } => "index.html",
+            Backend::Herdr(_) => "herdr.html",
+        }
+    }
+}
+
 #[derive(Clone)]
 struct AppState {
     guard: SessionGuard,
-    cmd_tx: CommandTx,
-    event_tx: broadcast::Sender<PtyEvent>,
+    backend: Backend,
     connected_notify: Arc<Notify>,
 }
 
 pub struct ServerConfig {
     pub token: String,
-    pub cmd_tx: CommandTx,
-    pub event_rx: EventRx,
+    pub backend: BackendConfig,
     pub bind: String,
     pub tls: Option<SelfSignedCert>,
 }
 
 pub async fn start(config: ServerConfig) -> anyhow::Result<(SocketAddr, Arc<Notify>)> {
     let connected_notify = Arc::new(Notify::new());
+    let backend = match config.backend {
+        BackendConfig::Pty { cmd_tx, event_rx } => Backend::Pty {
+            cmd_tx,
+            event_tx: relay_events(event_rx),
+        },
+        BackendConfig::Herdr(hub) => Backend::Herdr(hub),
+    };
     let state = AppState {
         guard: SessionGuard::new(config.token),
-        cmd_tx: config.cmd_tx,
-        event_tx: relay_events(config.event_rx),
+        backend,
         connected_notify: connected_notify.clone(),
     };
 
@@ -101,8 +130,8 @@ fn relay_events(rx: EventRx) -> broadcast::Sender<PtyEvent> {
     tx
 }
 
-async fn index_handler() -> impl IntoResponse {
-    match FrontendAssets::get("index.html") {
+async fn index_handler(State(state): State<AppState>) -> impl IntoResponse {
+    match FrontendAssets::get(state.backend.index_file()) {
         Some(content) => Html(String::from_utf8_lossy(&content.data).to_string()).into_response(),
         None => StatusCode::NOT_FOUND.into_response(),
     }
@@ -147,7 +176,7 @@ async fn handle_ws(
         .authenticate(token.as_deref(), refresh.as_deref())
         .await;
 
-    let (mut ws_tx, mut ws_rx) = socket.split();
+    let (mut ws_tx, ws_rx) = socket.split();
 
     match auth_result {
         AuthResult::NewSession { refresh_token } => {
@@ -170,8 +199,21 @@ async fn handle_ws(
         }
     }
 
-    let mut event_rx = state.event_tx.subscribe();
-    let cmd_tx = state.cmd_tx.clone();
+    match state.backend {
+        Backend::Pty { cmd_tx, event_tx } => bridge_pty(ws_tx, ws_rx, cmd_tx, event_tx).await,
+        Backend::Herdr(hub) => herdr::ws::serve(ws_tx, ws_rx, hub).await,
+    }
+
+    tracing::info!("Client disconnected");
+}
+
+async fn bridge_pty(
+    mut ws_tx: SplitSink<WebSocket, Message>,
+    mut ws_rx: SplitStream<WebSocket>,
+    cmd_tx: CommandTx,
+    event_tx: broadcast::Sender<PtyEvent>,
+) {
+    let mut event_rx = event_tx.subscribe();
 
     let send_task = tokio::spawn(async move {
         loop {
@@ -219,6 +261,4 @@ async fn handle_ws(
         _ = send_task => {},
         _ = recv_task => {},
     }
-
-    tracing::info!("Client disconnected");
 }

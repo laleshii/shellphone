@@ -9,23 +9,28 @@ relations:
   target: project-overview
 - type: references
   target: session-guard
-summary: 'High-level architecture: how the CLI, PTY, server, auth, tunnel, TLS, and frontend modules compose.'
+- type: references
+  target: herdr-bridge
+summary: 'High-level architecture: how the CLI, PTY, server, auth, tunnel, TLS, herdr bridge, and frontend modules compose.'
 ---
 
 # Architecture
 
-shellphone is structured as seven Rust modules plus a bundled frontend:
+shellphone is structured as eight Rust modules plus a bundled frontend:
 
 ```
 main.rs       →  CLI parsing, orchestration, QR code rendering
 auth.rs       →  one-time token + refresh token, constant-time comparison
 protocol.rs   →  typed WebSocket messages (ClientMessage / ServerMessage)
 pty_bridge.rs →  spawns command in PTY, returns channel handles + exit signal
-server.rs     →  axum HTTP/WS server with embedded frontend, TLS support
+herdr/        →  mirrors a running herdr session: socket API + per-pane control child
+server.rs     →  axum HTTP/WS server with embedded frontend, TLS, backend dispatch
 tls.rs        →  self-signed cert generation via rcgen
 tunnel/       →  provider abstraction: cloudflared, ngrok, bore, tailscale, custom
-frontend/     →  xterm.js single-page app with vendored assets
+frontend/     →  wterm single-page apps (index.html for PTY, herdr.html for herdr)
 ```
+
+`server.rs` serves one of two backends per process: `BackendConfig::Pty` for `run`/`agent`, or `BackendConfig::Herdr` for `shellphone herdr` (see [[herdr-bridge]]). Auth, tunnel and QR handling are shared through `main::serve`.
 
 ## Data flow
 

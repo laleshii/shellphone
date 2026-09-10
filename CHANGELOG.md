@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0
+
+### Added
+
+- `shellphone herdr [PANE]` — drive a running [herdr](https://herdr.dev) session from your phone: browse workspaces, tabs and panes with live agent status, attach to one pane at a time, switch with ‹ › or the pane list, and focus a pane on the desktop
+- Panes are rendered at phone size through `herdr terminal session control --takeover`; herdr restores the desktop size when you detach
+- `--session <name>`, `--socket <path>` and `--herdr-bin <path>` to pick the herdr server; `$HERDR_SOCKET_PATH` is honoured when running from inside a herdr pane
+- Reconnecting phones get the current screen replayed instead of a blank terminal
+- Swipe scrolling of herdr's scrollback with fling; one finger row scrolls one row, full-screen apps receive wheel ticks
+
+### Changed
+
+- `server.rs` now dispatches on a backend (`Pty` or `Herdr`); `main::serve` owns the shared tunnel, QR and auth flow
+
 ## 0.3.1
 
 ### Added

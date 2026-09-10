@@ -11,6 +11,8 @@ relations:
   target: pty-bridge
 - type: depends_on
   target: session-guard
+- type: references
+  target: herdr-bridge
 summary: 'The axum server: routes, embedded frontend, WebSocket handling, TLS support, and port fallback.'
 ---
 
@@ -20,13 +22,13 @@ summary: 'The axum server: routes, embedded frontend, WebSocket handling, TLS su
 
 ## Routes
 
-- **`GET /`** — serves the embedded `frontend/index.html` as HTML.
+- **`GET /`** — serves the embedded `frontend/index.html` (PTY backend) or `frontend/herdr.html` (herdr backend) as HTML.
 - **`GET /assets/{*path}`** — serves vendored frontend assets (xterm.js, CSS) with MIME type detection.
 - **`GET /ws`** — WebSocket upgrade. Reads `token` and `refresh` query parameters.
 
 ## Server startup
 
-`start()` accepts a `ServerConfig` and returns `(SocketAddr, Arc<Notify>)`. The `Notify` fires when a client successfully authenticates, used by `main` to clear the QR code.
+`start()` accepts a `ServerConfig` whose `backend` is `BackendConfig::Pty { cmd_tx, event_rx }` or `BackendConfig::Herdr(Arc<Hub>)` (see [[herdr-bridge]]), and returns `(SocketAddr, Arc<Notify>)`. After authentication `handle_ws` hands the socket halves to `bridge_pty` or `herdr::ws::serve`. The `Notify` fires when a client successfully authenticates, used by `main` to clear the QR code.
 
 Port binding tries `{bind_ip}:3845` first, falls back to `{bind_ip}:0` (OS-assigned) if the port is taken.
 

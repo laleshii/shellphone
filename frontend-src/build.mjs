@@ -9,10 +9,10 @@ const outDir = resolve(__dirname, '../frontend');
 mkdirSync(outDir, { recursive: true });
 
 await esbuild.build({
-  entryPoints: [resolve(__dirname, 'terminal.mjs')],
+  entryPoints: [resolve(__dirname, 'terminal.mjs'), resolve(__dirname, 'herdr.mjs')],
   bundle: true,
   format: 'esm',
-  outfile: resolve(outDir, 'terminal.js'),
+  outdir: outDir,
   minify: true,
   target: 'es2022',
 });
@@ -21,7 +21,8 @@ await esbuild.build({
 const cssPath = resolve(__dirname, 'node_modules/@wterm/dom/src/terminal.css');
 cpSync(cssPath, resolve(outDir, 'terminal.css'));
 
-// Copy index.html
+// Copy HTML entry points
 cpSync(resolve(__dirname, 'index.html'), resolve(outDir, 'index.html'));
+cpSync(resolve(__dirname, 'herdr.html'), resolve(outDir, 'herdr.html'));
 
 console.log('Frontend built to ../frontend/');

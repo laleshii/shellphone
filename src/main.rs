@@ -1,5 +1,6 @@
 mod attach;
 mod auth;
+mod herdr;
 mod protocol;
 mod pty_bridge;
 mod server;
@@ -72,6 +73,27 @@ enum Commands {
         #[command(flatten)]
         net: NetworkOpts,
     },
+
+    /// Browse and drive a running herdr session from your phone
+    Herdr {
+        /// Pane to attach on start (e.g. w1:p1). Omit to pick from the phone.
+        pane: Option<String>,
+
+        /// Named herdr session (defaults to the default session, or $HERDR_SOCKET_PATH)
+        #[arg(long)]
+        session: Option<String>,
+
+        /// Explicit herdr socket path (overrides --session)
+        #[arg(long)]
+        socket: Option<std::path::PathBuf>,
+
+        /// Path to the herdr binary (defaults to `herdr` on PATH)
+        #[arg(long)]
+        herdr_bin: Option<std::path::PathBuf>,
+
+        #[command(flatten)]
+        net: NetworkOpts,
+    },
 }
 
 #[tokio::main]
@@ -88,6 +110,32 @@ async fn main() -> anyhow::Result<()> {
         Commands::Agent { agent, session, net } => {
             let cmd = resolve_agent_command(agent, session)?;
             run_command(&cmd, net).await
+        }
+        Commands::Herdr {
+            pane,
+            session,
+            socket,
+            herdr_bin,
+            net,
+        } => {
+            let hub = herdr::connect(herdr::Options {
+                session,
+                socket,
+                herdr_bin,
+                pane,
+            })
+            .await?;
+            let shutdown = {
+                let hub = hub.clone();
+                async move { hub.closed().await }
+            };
+            serve(
+                server::BackendConfig::Herdr(hub),
+                net,
+                shutdown,
+                "Client connected. Press ctrl+c to stop sharing herdr.",
+            )
+            .await
         }
     }
 }
@@ -179,8 +227,28 @@ fn resolve_agent_command(
 }
 
 async fn run_command(command_str: &str, net: NetworkOpts) -> anyhow::Result<()> {
-    let token = auth::generate_token();
     let (cmd_tx, event_rx, exit_rx) = pty_bridge::spawn(command_str)?;
+    let shutdown = async move {
+        let code = exit_rx.await.ok().flatten();
+        tracing::info!("Process exited with code {}", code.unwrap_or(0));
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    };
+    serve(
+        server::BackendConfig::Pty { cmd_tx, event_rx },
+        net,
+        shutdown,
+        "Client connected. Waiting for process to exit...",
+    )
+    .await
+}
+
+async fn serve(
+    backend: server::BackendConfig,
+    net: NetworkOpts,
+    shutdown: impl std::future::Future<Output = ()>,
+    connected_message: &'static str,
+) -> anyhow::Result<()> {
+    let token = auth::generate_token();
 
     let default_bind = if net.tls {
         "0.0.0.0:3845"
@@ -201,8 +269,7 @@ async fn run_command(command_str: &str, net: NetworkOpts) -> anyhow::Result<()> 
 
     let server_config = server::ServerConfig {
         token: token.clone(),
-        cmd_tx,
-        event_rx,
+        backend,
         bind: bind_addr.clone(),
         tls: tls_cert,
     };
@@ -235,7 +302,7 @@ async fn run_command(command_str: &str, net: NetworkOpts) -> anyhow::Result<()> 
     tokio::spawn(async move {
         connected_notify2.notified().await;
         clear_lines(qr_lines);
-        eprintln!("  Client connected. Waiting for process to exit...");
+        eprintln!("  {connected_message}");
         eprintln!();
     });
 
@@ -243,11 +310,7 @@ async fn run_command(command_str: &str, net: NetworkOpts) -> anyhow::Result<()> 
         _ = tokio::signal::ctrl_c() => {
             tracing::info!("Interrupted");
         }
-        exit_code = exit_rx => {
-            let code = exit_code.ok().flatten();
-            tracing::info!("Process exited with code {}", code.unwrap_or(0));
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
+        _ = shutdown => {}
     }
 
     Ok(())
