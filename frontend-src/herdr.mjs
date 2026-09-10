@@ -44,8 +44,10 @@ const term = new WTerm(terminalEl, {
 });
 await term.init();
 
-// Mobile toolbar
+// Reading comes first on a phone: wterm focuses its input on init, which
+// would raise the keyboard. Tapping the terminal focuses it explicitly.
 if (isTouchDevice) {
+  document.activeElement?.blur();
   toolbarEl.style.display = 'flex';
 }
 
@@ -307,7 +309,6 @@ function openDrawer() {
 
 function closeDrawer() {
   drawerEl.hidden = true;
-  term.focus();
 }
 
 el('menu').addEventListener('click', openDrawer);
