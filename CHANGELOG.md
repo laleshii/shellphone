@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+### Changed
+
+- `--tunnel tailscale` now serves directly over the tailnet: shellphone binds to the node's Tailscale IPv4 and prints the MagicDNS URL. No relay, no Funnel to enable, lowest latency for the herdr view
+- The previous Funnel behaviour moved to `--tunnel tailscale-funnel` (still what `auto` falls back to)
+
 ## 0.4.0
 
 ### Added

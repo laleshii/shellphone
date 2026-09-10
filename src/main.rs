@@ -19,7 +19,7 @@ struct Cli {
 
 #[derive(clap::Args, Clone)]
 struct NetworkOpts {
-    /// Tunnel provider: auto, cloudflared, ngrok, bore, tailscale, custom, none
+    /// Tunnel provider: auto, cloudflared, ngrok, bore, tailscale, tailscale-funnel, custom, none
     #[arg(long, default_value = "auto")]
     tunnel: String,
 
@@ -249,13 +249,26 @@ async fn serve(
     connected_message: &'static str,
 ) -> anyhow::Result<()> {
     let token = auth::generate_token();
+    let provider = parse_tunnel_provider(&net.tunnel, net.tunnel_cmd, net.bore_server);
 
     let default_bind = if net.tls {
         "0.0.0.0:3845"
     } else {
         "127.0.0.1:3845"
     };
-    let bind_addr = net.bind.unwrap_or_else(|| default_bind.to_string());
+    let bind_addr = match net.bind {
+        Some(bind) => bind,
+        None if matches!(provider, Some(tunnel::Provider::Tailscale)) => {
+            match tunnel::tailscale::bind_address(3845).await {
+                Some(addr) => addr,
+                None => {
+                    eprintln!("  (tailscale is not running; binding locally)");
+                    default_bind.to_string()
+                }
+            }
+        }
+        None => default_bind.to_string(),
+    };
 
     let tls_cert = if net.tls {
         let cert = tls::generate()?;
@@ -278,8 +291,6 @@ async fn serve(
     let port = addr.port();
     let scheme = if net.tls { "https" } else { "http" };
     tracing::info!("Server listening on {scheme}://{addr}");
-
-    let provider = parse_tunnel_provider(&net.tunnel, net.tunnel_cmd, net.bore_server);
 
     let base_url = match provider {
         Some(provider) => match provider.start(port).await {
@@ -330,6 +341,7 @@ fn parse_tunnel_provider(
             server: bore_server,
         }),
         "tailscale" => Some(tunnel::Provider::Tailscale),
+        "tailscale-funnel" => Some(tunnel::Provider::TailscaleFunnel),
         "custom" => {
             let cmd = custom_cmd.expect("--tunnel-cmd is required when --tunnel=custom");
             Some(tunnel::Provider::Custom { cmd })

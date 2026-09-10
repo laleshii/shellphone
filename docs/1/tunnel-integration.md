@@ -7,7 +7,7 @@ topics:
 relations:
 - type: refines
   target: architecture
-summary: 'Provider-based tunnel system: cloudflared, ngrok, bore, tailscale, custom command, and auto-detection.'
+summary: 'Provider-based tunnel system: cloudflared, ngrok, bore, tailscale (direct tailnet), tailscale funnel, custom command, and auto-detection.'
 ---
 
 # Tunnel providers
@@ -23,7 +23,8 @@ summary: 'Provider-based tunnel system: cloudflared, ngrok, bore, tailscale, cus
 | `Cloudflared` | `cloudflared tunnel --url http://127.0.0.1:{port}` | `*.trycloudflare.com` | Quick tunnel, no account needed |
 | `Ngrok` | `ngrok http {port} --log stdout` | `*.ngrok.*` | Requires ngrok account for custom domains |
 | `Bore` | `bore local {port} --to {server}` | any `https://` | Default server: `bore.pub` |
-| `Tailscale` | `tailscale funnel {port}` | `*.ts.net` | Requires Tailscale on the host |
+| `Tailscale` | `tailscale status --json` (no process) | `http://<node>.<tailnet>.ts.net:{port}` | Direct tailnet access: `main::serve` binds to the IPv4 from `tailscale ip -4` instead of loopback, so only tailnet peers reach it. Plain HTTP; WireGuard encrypts the path. Nothing to enable on the tailnet. |
+| `TailscaleFunnel` | `tailscale funnel {port}` | `*.ts.net` | Public exposure through Tailscale's ingress relays. Requires Funnel enabled on the tailnet, otherwise the command prints an enable link and the URL wait times out. Used by `auto`. |
 | `Custom` | user-provided command with `{port}` placeholder | any `https://` | 30s URL parse timeout |
 | `Auto` | probes `which` for each provider in order | — | Falls back with a helpful error message |
 

@@ -35,7 +35,8 @@ shellphone spawns your command in a pseudo-terminal, serves a wterm web UI over 
 - **TUI scroll support** — swipe to scroll in Claude Code, vim, less, etc.
 - **Agent shortcuts** — `shellphone agent claude` to resume sessions directly
 - **herdr on your phone** — `shellphone herdr` lists every workspace, tab and pane of a running [herdr](https://herdr.dev) session with live agent status; tap to attach, swipe through panes
-- **Tunnel auto-detection** — cloudflared, ngrok, bore, tailscale, or custom commands
+- **Tunnel auto-detection** — cloudflared, ngrok, bore, tailscale funnel, or custom commands
+- **Tailnet mode** — `--tunnel tailscale` binds to your Tailscale IP and shares the MagicDNS name: direct WireGuard path, no relay, nothing enabled on the tailnet
 - **One-time token auth** with refresh token for reconnection
 - **Built-in TLS** — self-signed certs with `--tls`, fingerprint printed for TOFU
 - **Virtual keyboard support** — terminal resizes when the keyboard appears
@@ -115,7 +116,7 @@ shellphone herdr --tunnel cloudflared        # same tunnel options as `run`
 
 Swipe to scroll: one finger row moves one row of herdr's scrollback, and a flick keeps going. In full-screen apps like Claude Code the swipe is forwarded as mouse wheel ticks.
 
-Requires herdr 0.9 or newer on the same machine. Attaching takes over the pane's terminal size while the phone is connected (like a smaller tmux client); herdr hands the size back to the desktop when you switch away or stop shellphone. Running `shellphone herdr` from inside a herdr pane targets that session via `$HERDR_SOCKET_PATH`. A cloudflared tunnel adds 25–90 ms per round trip; for the smoothest scrolling use `--tunnel tailscale` or `--tls --bind 0.0.0.0:3845` on the same Wi-Fi.
+Requires herdr 0.9 or newer on the same machine. Attaching takes over the pane's terminal size while the phone is connected (like a smaller tmux client); herdr hands the size back to the desktop when you switch away or stop shellphone. Running `shellphone herdr` from inside a herdr pane targets that session via `$HERDR_SOCKET_PATH`. A cloudflared tunnel adds 25–90 ms per round trip; for the smoothest scrolling use `--tunnel tailscale` (direct over your tailnet, no Funnel needed) or `--tls --bind 0.0.0.0:3845` on the same Wi-Fi.
 
 ```
     --session <NAME>       Named herdr session (default: the default session)
@@ -139,7 +140,7 @@ shellphone attach -k "https://10.0.10.8:3845?token=abc123"   # -k accepts self-s
 ### Network options
 
 ```
-    --tunnel <PROVIDER>    auto, cloudflared, ngrok, bore, tailscale, custom, none [default: auto]
+    --tunnel <PROVIDER>    auto, cloudflared, ngrok, bore, tailscale, tailscale-funnel, custom, none [default: auto]
     --tunnel-cmd <CMD>     Custom tunnel command ({port} placeholder)
     --tls                  Enable built-in TLS with self-signed certificate
     --bind <ADDR>          Bind address [default: 127.0.0.1:3845]

@@ -2,7 +2,7 @@ mod bore;
 mod cloudflared;
 mod custom;
 mod ngrok;
-mod tailscale;
+pub mod tailscale;
 
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -19,6 +19,7 @@ pub enum Provider {
     Ngrok,
     Bore { server: String },
     Tailscale,
+    TailscaleFunnel,
     Custom { cmd: String },
     Auto,
 }
@@ -30,6 +31,7 @@ impl Provider {
             Provider::Ngrok => ngrok::start(local_port).await,
             Provider::Bore { server } => bore::start(local_port, server).await,
             Provider::Tailscale => tailscale::start(local_port).await,
+            Provider::TailscaleFunnel => tailscale::start_funnel(local_port).await,
             Provider::Custom { cmd } => custom::start(local_port, cmd).await,
             Provider::Auto => auto_detect(local_port).await,
         }
@@ -41,7 +43,7 @@ async fn auto_detect(local_port: u16) -> TunnelResult {
         ("cloudflared", || Provider::Cloudflared),
         ("ngrok", || Provider::Ngrok),
         ("bore", || Provider::Bore { server: "bore.pub".into() }),
-        ("tailscale", || Provider::Tailscale),
+        ("tailscale", || Provider::TailscaleFunnel),
     ];
     for &(name, make_provider) in candidates {
         if which(name).await {
@@ -50,7 +52,7 @@ async fn auto_detect(local_port: u16) -> TunnelResult {
                 Provider::Cloudflared => cloudflared::start(local_port).await,
                 Provider::Ngrok => ngrok::start(local_port).await,
                 Provider::Bore { server } => bore::start(local_port, &server).await,
-                Provider::Tailscale => tailscale::start(local_port).await,
+                Provider::TailscaleFunnel => tailscale::start_funnel(local_port).await,
                 _ => unreachable!(),
             };
         }
